@@ -9,7 +9,7 @@ void detectGuitarNeck(Mat src)
 	canny(src, dst, color_dst, color_dst2);
 
 	vector<Vec4i> lines, neckLines;
-	vector<double> angles;
+	vector<double> angles, sortedAngles;
 
 	p_min.x = src.cols;
 	p_max.x = 0;
@@ -19,15 +19,17 @@ void detectGuitarNeck(Mat src)
 	HoughLinesP(dst, lines, 1, CV_PI / 180, 80, 30, 10);
 	neckLines.resize(lines.size());
 	angles.resize(lines.size());
+	sortedAngles.resize(lines.size());
 	for (size_t i = 0; i < lines.size(); i++)
 	{
 		angles[i] = calculateAngle(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
+		sortedAngles[i] = angles[i];
 	}
-	sort(angles.begin(), angles.end());
+	sort(sortedAngles.begin(), sortedAngles.end());
 
 	int numNeckLines = 0;
 
-	double medianAngle = angles[angles.size() / 2];
+	double medianAngle = sortedAngles[angles.size() / 2];
 	for (int i = 0; i < lines.size(); i++)
 	{
 		line(color_dst, Point(lines[i][0], lines[i][1]),
