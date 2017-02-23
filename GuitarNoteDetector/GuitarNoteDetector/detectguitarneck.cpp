@@ -1,21 +1,23 @@
 #include "detectGuitarNeck.h"
 
+int pxmin_line, pxmax_line, pymin_line, pymax_line;
+Point p_max, p_min;
+
 void detectGuitarNeck(Mat src)
 {
 	Mat dst, color_dst, color_dst2;
 	canny(src, dst, color_dst, color_dst2);
 
-	vector<Vec4i> lines, lines2;
+	vector<Vec4i> lines, neckLines;
 	vector<double> angles;
 
-	Point p_max, p_min;
 	p_min.x = src.cols;
 	p_max.x = 0;
 	p_min.y = src.rows;
 	p_max.y = 0;
 
 	HoughLinesP(dst, lines, 1, CV_PI / 180, 80, 30, 10);
-	lines2.resize(lines.size());
+	neckLines.resize(lines.size());
 	angles.resize(lines.size());
 	for (size_t i = 0; i < lines.size(); i++)
 	{
@@ -23,53 +25,20 @@ void detectGuitarNeck(Mat src)
 	}
 	sort(angles.begin(), angles.end());
 
-	int numLines = 0;
-	int pxmin_line, pxmax_line, pymin_line, pymax_line;
+	int numNeckLines = 0;
 
 	double medianAngle = angles[angles.size() / 2];
 	for (int i = 0; i < lines.size(); i++)
 	{
 		line(color_dst, Point(lines[i][0], lines[i][1]),
 			Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
-		double deltaY = lines[i][3] - lines[i][1];
-		double deltaX = lines[i][2] - lines[i][0];
-		double angle = atan(deltaY / deltaX) * 180 / CV_PI;
-		double mag = sqrt(deltaY*deltaY + deltaX*deltaX);
-		if (!(angle > -2) && !(angle < -12) && mag > 100)
+		double mag = calculateMagnitude(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
+		if (!(angles[i] > -2) && !(angles[i] < -12) && mag > 100)
 		{
 			line(color_dst2, Point(lines[i][0], lines[i][1]),
 				Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
-			lines2[numLines] = lines[i];
-			numLines++;
-			int px1 = lines[i][0];
-			int px2 = lines[i][2];
-			int py1 = lines[i][1];
-			int py2 = lines[i][3];
-
-			if (lines[i][0] < p_min.x)
-			{
-				p_min.x = lines[i][0];
-				p_min.y = lines[i][1];
-				pxmin_line = i;
-			}
-			if (lines[i][1] > p_max.y)
-			{
-				p_max.x = lines[i][0];
-				p_max.y = lines[i][1];
-				pymax_line = i;
-			}
-			if (lines[i][2] > p_max.x)
-			{
-				p_max.x = lines[i][2];
-				p_max.y = lines[i][3];
-				pxmax_line = i;
-			}
-			if (lines[i][3] < p_min.y)
-			{
-				p_min.x = lines[i][2];
-				p_min.y = lines[i][3];
-				pymin_line = i;
-			}
+			neckLines[numNeckLines++] = lines[i];
+			maxOrMinPoint(lines[i][0], lines[i][1], lines[i][2], lines[i][3], i);
 		}
 	}
 	double pxminAngle = calculateAngle(lines[pxmin_line][0], lines[pxmin_line][1], lines[pxmin_line][2], lines[pxmin_line][3]);
@@ -108,10 +77,46 @@ double calculateAngle(int px1, int py1, int px2, int py2)
 	return angle;
 }
 
+double calculateMagnitude(int px1, int py1, int px2, int py2)
+{
+	double deltaY = py2 - py1;
+	double deltaX = px2 - px1;
+	double mag = sqrt(deltaY*deltaY + deltaX*deltaX);
+	return mag;
+}
+
 void canny(Mat src, Mat &dst, Mat &color_dst, Mat &color_dst2)
 {
 	Canny(src, dst, 50, 100, 3);
 	imwrite("Canny.jpg", dst);
 	cvtColor(dst, color_dst, CV_GRAY2BGR);
 	cvtColor(dst, color_dst2, CV_GRAY2BGR);
+}
+
+void maxOrMinPoint(int px1, int py1, int px2, int py2, int lineNum)
+{
+	if (px1 < p_min.x)
+	{
+		p_min.x = px1;
+		p_min.y = py1;
+		pxmin_line = lineNum;
+	}
+	if (py1 > p_max.y)
+	{
+		p_max.x = px1;
+		p_max.y = py1;
+		pymax_line = lineNum;
+	}
+	if (px2 > p_max.x)
+	{
+		p_max.x = px2;
+		p_max.y = py2;
+		pxmax_line = lineNum;
+	}
+	if (py2 < p_min.y)
+	{
+		p_min.x = px2;
+		p_min.y = py2;
+		pymin_line = lineNum;
+	}
 }
