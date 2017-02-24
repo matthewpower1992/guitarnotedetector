@@ -10,7 +10,6 @@ int main(int argc, char** argv)
 {
 	Mat src;
 	src = imread("guitar1.png");
-	detectGuitarNeck(src);
-
+    detectGuitarNeck(src);
 	return 0;
 }
