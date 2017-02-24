@@ -3,7 +3,7 @@
 int pxmin_line, pxmax_line, pymin_line, pymax_line;
 Point p_max, p_min;
 
-void detectGuitarNeck(Mat src)
+Mat detectGuitarNeck(Mat src)
 {
 	Mat dst, color_dst, color_dst2;
 	canny(src, dst, color_dst, color_dst2);
@@ -50,25 +50,22 @@ void detectGuitarNeck(Mat src)
 	double pymaxAngle = calculateAngle(lines[pymax_line][0], lines[pymax_line][1], lines[pymax_line][2], lines[pymax_line][3]);
 
 	double avgAngle = (pxminAngle + pxmaxAngle + pyminAngle + pymaxAngle) / 4;
-	Mat rotatedImage = rotateImage(src, avgAngle);
+	Point center = Point(src.cols / 2, src.rows / 2);
+	Mat rot_mat(2, 3, CV_32FC1);
+	rot_mat = getRotationMatrix2D(center, avgAngle, 1);
 
-	//rotate image based on angles
-	circle(src, Point(p_max.x, p_max.y), 10, Scalar(255, 0, 0));
-	circle(src, Point(p_min.x, p_min.y), 10, Scalar(255, 0, 0));
-	circle(src, Point(p_max.x, p_max.y), 10, Scalar(255, 0, 0));
-	circle(src, Point(p_min.x, p_min.y), 10, Scalar(255, 0, 0));
+	Mat rotatedImage;
+	warpAffine(src, rotatedImage, rot_mat, src.size());
 
-	namedWindow("Source", 1);
-	imshow("Source", src);
+	Point px = Point(p_min.x, p_max.y);
+	Point py = Point(p_max.x, p_min.y);
+	rotatePoints(rot_mat, px, py);	
+	
+	Rect neckROI(px.x, py.y, py.x-px.x, px.y-py.y);
+	Mat cropped;
+	rotatedImage(neckROI).copyTo(cropped);
 
-	namedWindow("Detected Lines", 1);
-	imshow("Detected Lines", color_dst2);
-
-	namedWindow("Detected Lines2", 1);
-	imshow("Detected Lines2", dst);
-	imwrite("DetectedLines.jpg", color_dst2);
-
-	waitKey(0);
+	return cropped;
 }
 
 double calculateAngle(int px1, int py1, int px2, int py2)
@@ -100,59 +97,33 @@ void maxOrMinPoint(int px1, int py1, int px2, int py2, int lineNum)
 	if (px1 < p_min.x)
 	{
 		p_min.x = px1;
-		p_min.y = py1;
 		pxmin_line = lineNum;
 	}
 	if (py1 > p_max.y)
 	{
-		p_max.x = px1;
 		p_max.y = py1;
 		pymax_line = lineNum;
 	}
 	if (px2 > p_max.x)
 	{
 		p_max.x = px2;
-		p_max.y = py2;
 		pxmax_line = lineNum;
 	}
 	if (py2 < p_min.y)
 	{
-		p_min.x = px2;
 		p_min.y = py2;
 		pymin_line = lineNum;
 	}
 }
 
-Mat rotateImage(Mat src, double angle)
+void rotatePoints(Mat rot_mat, Point &px, Point &py)
 {
-	char* source_window = "Source image";
-	char* rotate_window = "Warp + Rotate";
-
-	Mat rot_mat(2, 3, CV_32FC1);
-	Mat rotate_dst;
-
-	/** Rotating the image after Warp */
-
-	/// Compute a rotation matrix with respect to the center of the image
-	Point center = Point(src.cols / 2, src.rows / 2);
-	//double angle = -90.0;
-	double scale = 1;
-
-	/// Get the rotation matrix with the specifications above
-	rot_mat = getRotationMatrix2D(center, angle, scale);
-
-	/// Rotate the warped image
-	warpAffine(src, rotate_dst, rot_mat, src.size());
-
-	/// Show what you got
-	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
-	imshow(source_window, src);
-
-	namedWindow(rotate_window, CV_WINDOW_AUTOSIZE);
-	imshow(rotate_window, rotate_dst);
-
-	/// Wait until user exits the program
-	waitKey(0);
-
-	return rotate_dst;
+	std::vector<Point> vec;
+	vec.push_back(px);
+	vec.push_back(py);
+	transform(vec, vec, rot_mat);
+	px = vec.at(0);
+	px.y += 10;
+	py = vec.at(1);
+	py.y -= 10;
 }

@@ -5,7 +5,7 @@
 
 using namespace cv;
 
-void detectGuitarNeck(Mat src);
+Mat detectGuitarNeck(Mat src);
 
 double calculateAngle(int px1, int py1, int px2, int py2);
 
@@ -15,4 +15,6 @@ void canny(Mat src, Mat &dst, Mat &color_dst, Mat &color_dst2);
 
 void maxOrMinPoint(int px1, int py1, int px2, int py2, int lineNum);
 
-Mat rotateImage(Mat src, double angle);
+Mat rotateImage(Mat &src, Mat rot_mat);
+
+void rotatePoints(Mat rot_mat, Point &px, Point &py);
