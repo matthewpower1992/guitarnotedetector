@@ -35,7 +35,8 @@ Mat detectGuitarNeck(Mat src)
 		line(color_dst, Point(lines[i][0], lines[i][1]),
 			Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
 		double mag = calculateMagnitude(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
-		if (!(angles[i] > -2) && !(angles[i] < -12) && mag > 100)
+		//if (!(angles[i] > -2) && !(angles[i] < -12) && mag > 100) //need to rework this
+		if (angles[i] < 0 && mag > 100)
 		{
 			line(color_dst2, Point(lines[i][0], lines[i][1]),
 				Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
@@ -43,6 +44,11 @@ Mat detectGuitarNeck(Mat src)
 			maxOrMinPoint(lines[i][0], lines[i][1], lines[i][2], lines[i][3], i);
 		}
 	}
+
+	namedWindow("cd", 1);
+	imshow("cd", color_dst);
+	namedWindow("cd2", 1);
+	imshow("cd2", color_dst2);
 
 	double pxminAngle = calculateAngle(lines[pxmin_line][0], lines[pxmin_line][1], lines[pxmin_line][2], lines[pxmin_line][3]);
 	double pxmaxAngle = calculateAngle(lines[pxmax_line][0], lines[pxmax_line][1], lines[pxmax_line][2], lines[pxmax_line][3]);
@@ -61,9 +67,9 @@ Mat detectGuitarNeck(Mat src)
 	Point py = Point(p_max.x, p_min.y);
 	rotatePoints(rot_mat, px, py);	
 	
-	Rect neckROI(px.x, py.y, py.x-px.x, px.y-py.y);
+	Rect neckROI(px.x, py.y, py.x-px.x, px.y-py.y); //getting neg values 
 	Mat cropped;
-	rotatedImage(neckROI).copyTo(cropped);
+	//rotatedImage(neckROI).copyTo(cropped);
 
 	return cropped;
 }
