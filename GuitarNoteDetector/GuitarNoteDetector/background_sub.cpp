@@ -25,6 +25,7 @@ Mat background_sub(Mat background, Mat frame)
 	imshow("FG Mask MOG 2", fgMaskMOG2);
 	pMOG->operator()(frame, fgMaskMOG);
 	pMOG2->operator()(frame, fgMaskMOG2);
+	fgMaskMOG2 = dilation(fgMaskMOG2);
 	Mat dest;
 	frame.copyTo(dest);
 	for (int i = 0; i < frame.rows; i++)
@@ -48,9 +49,25 @@ Mat background_sub(Mat background, Mat frame)
 	imshow("FG Mask MOG 2", fgMaskMOG2);
 	imshow("Masked image", dest);
 	imshow("Source", background);
-	//destroy GUI windows
-	//destroyAllWindows();
 	return dest;
+}
+
+Mat dilation(Mat src)
+{
+	Mat dilation_dst;
+	namedWindow("Dilation Demo", CV_WINDOW_AUTOSIZE);
+	cvMoveWindow("Dilation Demo", src.cols, 0);
+
+	int dilation_elem = 1;
+	int dilation_size = 1;
+	int dilation_type = MORPH_RECT;
+
+	Mat element = getStructuringElement(dilation_type,
+		Size(2 * dilation_size + 1, 2 * dilation_size + 1),
+		Point(dilation_size, dilation_size));
+	dilate(src, dilation_dst, element);
+	imshow("Dilation Demo", dilation_dst);
+	return dilation_dst;
 }
 
 /*void processVideo(char* videoFilename) {

@@ -1,3 +1,4 @@
+#pragma once
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <opencv2/core/core.hpp>
@@ -8,10 +9,5 @@
 
 using namespace cv;
 
-
-Mat background_sub(Mat background, Mat frame);
-
-Mat dilation(Mat src);
-
-//void processVideo(char* videoFilename);
-
+Mat findFingertips(Mat src);
+void thresh_callback(int, void*);
