@@ -12,17 +12,17 @@ int keyboard;
 
 Mat background_sub(Mat background, Mat frame)
 {
-	namedWindow("Frame", 1);
+	/*namedWindow("Frame", 1);
 	namedWindow("FG Mask MOG", 1);
 	namedWindow("FG Mask MOG 2", 1);
-	namedWindow("Masked image", 1);
+	namedWindow("Masked image", 1);*/
 	pMOG = new BackgroundSubtractorMOG(); //MOG approach
 	pMOG2 = new BackgroundSubtractorMOG2(); //MOG2 approach
 	pMOG->operator()(background, fgMaskMOG);
 	pMOG2->operator()(background, fgMaskMOG2);
-	imshow("Frame", background);
+	/*imshow("Frame", background);
 	imshow("FG Mask MOG", fgMaskMOG);
-	imshow("FG Mask MOG 2", fgMaskMOG2);
+	imshow("FG Mask MOG 2", fgMaskMOG2);*/
 	pMOG->operator()(frame, fgMaskMOG);
 	pMOG2->operator()(frame, fgMaskMOG2);
 	fgMaskMOG2 = dilation(fgMaskMOG2);
@@ -43,30 +43,30 @@ Mat background_sub(Mat background, Mat frame)
 	}
 	imwrite("fgmask.jpg", fgMaskMOG2);
 	imwrite("dest.png", dest);
-	namedWindow("Source", 1);
+	/*namedWindow("Source", 1);
 	imshow("Frame", frame);
 	imshow("FG Mask MOG", fgMaskMOG);
 	imshow("FG Mask MOG 2", fgMaskMOG2);
 	imshow("Masked image", dest);
-	imshow("Source", background);
+	imshow("Source", background);*/
 	return dest;
 }
 
 Mat dilation(Mat src)
 {
 	Mat dilation_dst;
-	namedWindow("Dilation Demo", CV_WINDOW_AUTOSIZE);
-	cvMoveWindow("Dilation Demo", src.cols, 0);
+	//namedWindow("Dilation Demo", CV_WINDOW_AUTOSIZE);
+	//cvMoveWindow("Dilation Demo", src.cols, 0);
 
 	int dilation_elem = 1;
-	int dilation_size = 1;
+	int dilation_size = 3;
 	int dilation_type = MORPH_RECT;
 
 	Mat element = getStructuringElement(dilation_type,
 		Size(2 * dilation_size + 1, 2 * dilation_size + 1),
 		Point(dilation_size, dilation_size));
 	dilate(src, dilation_dst, element);
-	imshow("Dilation Demo", dilation_dst);
+	//imshow("Dilation Demo", dilation_dst);
 	return dilation_dst;
 }
 

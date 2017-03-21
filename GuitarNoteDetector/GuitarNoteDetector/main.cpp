@@ -1,21 +1,74 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <math.h>
+#include <windows.h>
+#include <mmsystem.h>
+#include <time.h>
 
 #include "detectGuitarNeck.h"
 #include "background_sub.h"
 #include "findFingertips.h"
+#include "fretDetector.h"
 
 using namespace cv;
 
-Mat fretDetector(Mat src);
+bool record();
+void backsub();
 
 int main(int argc, char** argv)
 {
-	Mat background, src, bgs, neck, fingerTips, frets;
-	//background = imread("1_1.jpg");
-	src = imread("neck.png");
-	frets = fretDetector(src);
+	//PlaySound(TEXT("hello.wav"),NULL, SND_FILENAME);
+	
+	backsub();
+	waitKey(0);
+	Mat background, src, bgs, neck, fingerTips, frets,img;
+	src = imread("2_w.png");
+	background = imread("2_3.png");
+	background.copyTo(img, src);
+	namedWindow("img", 1);
+	imshow("img", img);
+	neck = detectGuitarNeck(img);
+	waitKey(0);
+	/*int dilation_elem = 1;
+	int dilation_size = 5;
+	int dilation_type = MORPH_ELLIPSE;
+
+	Mat element = getStructuringElement(dilation_type,
+		Size(2 * dilation_size + 1, 2 * dilation_size + 1),
+		Point(dilation_size, dilation_size));
+	bgs = dilation(src);
+	erode(bgs, neck, element);*/
+	
+	/*Mat dest;
+	background.copyTo(dest);
+	for (int i = 0; i < src.rows; i++)
+	{
+		for (int j = 0; j < src.cols; j++)
+		{
+			int color = (int)bgs.at<uchar>(Point(j, i));
+			if (color <= 127)
+			{
+				dest.at<uchar>(Point(j * 3, i)) = 127;
+				dest.at<uchar>(Point((j * 3) + 1, i)) = 127;
+				dest.at<uchar>(Point((j * 3) + 2, i)) = 127;
+			}
+		}
+	}*/
+
+	
+	//backsub();
+	//background = imread("1_w.png");
+	//src = imread("2_w.png");
+	//absdiff(background, src, bgs);
+	//if (!record())
+	//{
+	//	return (-1);
+	//}
+	//bgs = background_sub(background, src);
+	//neck = detectGuitarNeck(bgs);
+	//fingerTips = findFingertips(neck);
+	//frets = fretDetector(neck);
+	//frets = fretDetector(src);
 	//bgs = background_sub(background, src); //if mask too big use src?
 	//neck = detectGuitarNeck(bgs);
 	//fingerTips = findFingertips(neck);
@@ -23,11 +76,17 @@ int main(int argc, char** argv)
 	namedWindow("Source", 1);
 	imshow("Source", src);
 
-	//namedWindow("Back", 1);
-	//imshow("Back", bgs);
+	namedWindow("Back", 1);
+	imshow("Back", bgs);
 
-	//namedWindow("Neck", 1);
-	//imshow("Neck", neck);
+	namedWindow("Neck", 1);
+	imshow("Neck", neck);
+
+	//namedWindow("Fingertips", 1);
+	//imshow("Fingertips", dest);
+
+	//namedWindow("Frets", 1);
+	//imshow("Frets", frets);
 
 	waitKey(0);
 
@@ -35,124 +94,175 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-Mat fretDetector(Mat src)
+void backsub()
 {
-	Mat src_gray, cdst;
-	Mat grad;
-	char* window_name = "Sobel Demo - Simple Edge Detector";
-	int scale = 1;
-	int delta = 0;
-	int ddepth = CV_16S;
+	// Init background substractor
+	Ptr<BackgroundSubtractor> bg_model = new BackgroundSubtractorMOG2();
 
-	int c;
+	// Create empy input img, foreground and background image and foreground mask.
+	Mat img, foregroundMask, backgroundImage, foregroundImg;
 
-	GaussianBlur(src, src, Size(3, 3), 0, 0, BORDER_DEFAULT);
+	// capture video from source 0, which is web camera, If you want capture video from file just replace //by  VideoCapture cap("videoFile.mov")
+	VideoCapture cap(0);
+	namedWindow("Guitar Note Detector", 1);
+	time_t start = time(0);
+	int secs;
+	// main loop to grab sequence of input files
+	for (int i = start; difftime(time(0), i) < 36 ;) {
 
-	/// Convert it to gray
-	cvtColor(src, src_gray, CV_BGR2GRAY);
+		bool ok = cap.grab();
 
-	/// Create window
-	namedWindow(window_name, CV_WINDOW_AUTOSIZE);
+		if (ok == false) {
 
-	/// Generate grad_x and grad_y
-	Mat grad_x, grad_y;
-	Mat abs_grad_x, abs_grad_y;
+			std::cout << "Video Capture Fail" << std::endl;
 
-	/// Gradient X
-	//Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
-	Sobel(src_gray, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT);
-	convertScaleAbs(grad_x, abs_grad_x);
 
-	/// Gradient Y
-	//Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
-	Sobel(src_gray, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT);
-	convertScaleAbs(grad_y, abs_grad_y);
+		}
+		else {
+			
+			// obtain input image from source
+			cap.retrieve(img, CV_CAP_OPENNI_BGR_IMAGE);
+			// Just resize input image if you want
+			//resize(img, img, Size(640, 480));
 
-	/// Total Gradient (approximate)
-	addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad);
+			string text1 = "Please step out of frame";
+			string text2 = "About to take photo";
+			string text3 = "Step back into frame with guitar";
+			string text4 = "NOTE";
+			int fontFace = FONT_HERSHEY_PLAIN;
+			double fontScale = 2;
+			int thickness = 3;
+			cv::Point textOrg(100, 130);
+			
 
-	imshow(window_name, grad);
-
-	//////////////////////////////////////////////
-	Mat color_dst;
-	vector<Vec4i> lines, neckLines;
-	vector<Point> centrePoints;
-	vector<double> angles, sortedAngles;
-
-	cvtColor(grad, color_dst, CV_GRAY2BGR);
-
-	Mat neckbw;
-	threshold(abs_grad_x,neckbw,75,255,THRESH_BINARY);
-	int yval = abs_grad_x.rows;
-	yval = yval / 8;
-	yval = yval * 3;
-	imwrite("gard_neck.png", neckbw);
-	centrePoints.resize(abs_grad_x.cols);
-	int numPoints = 0;
-	//line(neckbw, Point(0, yval),
-	//	Point(abs_grad_x.cols, yval), Scalar(0, 0, 255), 3, 8);
-	bool fretStarted = false;
-	int colorprev = 0;
-	for (int i = 0; i < abs_grad_x.cols; i++)
-	{
-		int color = (int)neckbw.at<uchar>(Point(i, yval));
-		if (color == 255)
-		{
-			if (fretStarted == false)
-			{
-				fretStarted = true;
-				centrePoints[numPoints++] = Point(i, yval);
+			// create foreground mask of proper size
+			if (foregroundMask.empty()) {
+				foregroundMask.create(img.size(), img.type());
 			}
-		}
-		else
-		{
-			if (colorprev == 0)
+
+			// compute foreground mask 8 bit image
+			// -1 is parameter that chose automatically your learning rate
+
+			bg_model->operator()(img, foregroundMask, true ? -1 : 0);
+
+			// smooth the mask to reduce noise in image
+			GaussianBlur(foregroundMask, foregroundMask, Size(11, 11), 3.5, 3.5);
+
+			// threshold mask to saturate at black and white values
+			threshold(foregroundMask, foregroundMask, 10, 255, THRESH_BINARY);
+
+
+			// create black foreground image
+				foregroundImg = Scalar::all(0);
+			// Copy source image to foreground image only in area with white mask
+			img.copyTo(foregroundImg, foregroundMask);
+
+			//Get background image
+			bg_model->getBackgroundImage(backgroundImage);
+
+			// Show the results
+			imshow("foreground mask", foregroundMask);
+			imshow("foreground image", foregroundImg);
+
+			int key6 = waitKey(40);
+
+			if (!backgroundImage.empty()) {
+
+				//imshow("mean background image", backgroundImage);
+				//int key5 = waitKey(40);
+
+			}
+			secs = difftime(time(0), start);
+			if (secs < 5)
 			{
-				fretStarted = false;
-			}			
+				cv::putText(img, text1, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+			}
+			else if (secs >= 5 && secs < 10)
+			{
+				cv::putText(img, text2, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+			}
+			else if (secs == 10)
+			{
+				imwrite("1_w.png", img);
+				PlaySound(TEXT("hello.wav"), NULL, SND_FILENAME | SND_ASYNC);
+			}
+			else if (secs > 10 && secs < 17)
+			{
+				cv::putText(img, text3, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+			}
+			else if (secs == 17)
+			{
+				PlaySound(TEXT("pop.wav"), NULL, SND_FILENAME);
+				cv::putText(img, text4, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+				string filename = "2_";
+				filename += std::to_string(secs/15);
+				filename += ".png";
+				imwrite("2_w.png", foregroundMask);
+				imwrite(filename, foregroundImg);
+			}
+			else if (secs % 3 == 2)
+			{
+				PlaySound(TEXT("pop.wav"), NULL, SND_FILENAME);
+				cv::putText(img, text4, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+				string filename = "2_";
+				filename += std::to_string(secs);
+				filename += ".png";
+				imwrite(filename, img);
+			}
+			imshow("Guitar Note Detector", foregroundImg);
+
 		}
-		colorprev = color;
+
 	}
-	for (int i = 0; i < numPoints; i++)
+}
+
+bool record()
+{
+	VideoCapture cap(0); // open the default camera
+	if (!cap.isOpened())  // check if we succeeded
+		return false;
+	namedWindow("Guitar Note Detector", 1);
+	int i = 0;
+	for (;;)
 	{
-		circle(neckbw, centrePoints[i], 3, Scalar(0, 255, 0));
+		Mat frame;
+		cap >> frame; // 25 FPS
+		string text1 = "Please step out of frame";
+		string text2 = "About to take photo";
+		string text3 = "Step back into frame with guitar";
+		int fontFace = FONT_HERSHEY_PLAIN;
+		double fontScale = 2;
+		int thickness = 3;
+		cv::Point textOrg(100, 130);
+		if (i < 200)
+		{
+			cv::putText(frame, text1, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+		}
+		else if (i > 200 && i < 225)
+		{
+			cv::putText(frame, text2, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+		}
+		else if (i == 225)
+		{
+			imwrite("1_w.png", frame);
+		}
+		else if (i > 225 && i < 425)
+		{
+			cv::putText(frame, text3, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+		}
+		else if (i > 425 && i < 450)
+		{
+			cv::putText(frame, text2, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+		}
+		else if (i == 450)
+		{
+			imwrite("2_w.png", frame);
+		}
+		i++;
+		imshow("Guitar Note Detector", frame);
+		if (waitKey(30) >= 0) break;
 	}
-	
-
-	namedWindow("grad", 1);
-	imshow("grad", abs_grad_x);
-	namedWindow("nbw", 1);
-	imshow("nbw", neckbw);
-
-	waitKey(0);
-
-	/*HoughLinesP(abs_grad_x, lines, 1, CV_PI, 55, 55, 1);
-
-	neckLines.resize(lines.size());
-	centrePoints.resize(lines.size());
-	angles.resize(lines.size());
-
-	double angleSum = 0;
-	for (size_t i = 0; i < lines.size(); i++)
-	{
-		angles[i] = calculateAngle(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
-		angleSum += angles[i];
-	}
-
-	int numNeckLines = 0;
-
-	for (int i = 0; i < lines.size(); i=i+5)
-	{
-		line(color_dst, Point(lines[i][0], lines[i][1]),
-			Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
-		double mag = calculateMagnitude(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
-	}
-
-	namedWindow("cd", 1);
-	imshow("cd", color_dst);
-
-	waitKey(0);*/
-
-	return grad;
+	// the camera will be deinitialized automatically in VideoCapture destructor
+	return true;
 }
 	

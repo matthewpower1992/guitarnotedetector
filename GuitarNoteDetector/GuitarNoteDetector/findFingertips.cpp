@@ -14,9 +14,9 @@ Mat findFingertips(Mat src)
 	//cv::inRange(src, cv::Scalar(80, 40, 20), cv::Scalar(255, 255, 255), segmented_image);
 	cv::inRange(src, cv::Scalar(80, 40, 20), cv::Scalar(255, 255, 255), segmented_image);
 
-	char* source_window = "Source";
+	/*char* source_window = "Source";
 	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
-	imshow(source_window, src);
+	imshow(source_window, src);*/
 
 	thresh_callback(0, 0);
 
@@ -26,12 +26,12 @@ Mat findFingertips(Mat src)
 	}
 
 	namedWindow("Segmented", 1);
-	imwrite("seg.png", segmented_image);
+	/*imwrite("seg.png", segmented_image);
 	imshow("Segmented", segmented_image);
 
 	namedWindow("Neck", 1);
 	imshow("Neck", src);
-	imwrite("circ.png", src);
+	imwrite("circ.png", src);*/
 
 	return segmented_image;
 }
@@ -90,10 +90,10 @@ void thresh_callback(int, void*)
 	}
 
 	/// Show in a window
-	namedWindow("Drawing", CV_WINDOW_AUTOSIZE);
+	/*namedWindow("Drawing", CV_WINDOW_AUTOSIZE);
 	imshow("Drawing", drawing);
 	imwrite("contours.png", drawing);
 	namedWindow("Drawing2", CV_WINDOW_AUTOSIZE);
 	imshow("Drawing2", drawing2);
-	imwrite("con2.png", drawing2);
+	imwrite("con2.png", drawing2);*/
 }
