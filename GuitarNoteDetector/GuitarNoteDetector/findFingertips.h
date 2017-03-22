@@ -9,5 +9,5 @@
 
 using namespace cv;
 
-Mat findFingertips(Mat src);
+vector<Point> findFingertips(Mat src);
 void thresh_callback(int, void*);

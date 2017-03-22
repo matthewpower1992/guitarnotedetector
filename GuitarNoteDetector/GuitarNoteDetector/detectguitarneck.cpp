@@ -3,15 +3,21 @@
 int pxmin_line, pxmax_line, pymin_line, pymax_line;
 Point p_max, p_min;
 
-//return ROI instead and apply to original image instead of masked
 Mat detectGuitarNeck(Mat src, Mat orig)
 {
+	//color dst used for debug
 	Mat dst, color_dst, color_dst2;
-	canny(src, dst, color_dst, color_dst2);
+	Mat src_gray;
+	blur(src, src_gray, Size(4, 4));
+	Canny(src_gray, dst, 100, 150, 3);
+	imwrite("Canny.jpg", dst);
+	cvtColor(dst, color_dst, CV_GRAY2BGR);
+	cvtColor(dst, color_dst2, CV_GRAY2BGR);
 
+	//necklines, centrepoints/rotatedcentrepoints only used for debug
 	vector<Vec4i> lines, neckLines;
 	vector<Point> centrePoints, rotatedCentrePoints;
-	vector<double> angles, sortedAngles;
+	vector<double> angles;
 
 	p_min.x = src.cols;
 	p_max.x = 0;
@@ -28,24 +34,20 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 	for (size_t i = 0; i < lines.size(); i++)
 	{
 		angles[i] = calculateAngle(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
-		//angleSum += angles[i];
 	}
 
 	int numNeckLines = 0;
-	int maxY1 = 0;
-	int maxX1 = 0;
-	int minY1 = src.rows;
-	int minX1 = 0;
 
 	for (int i = 0; i < lines.size(); i++)
 	{
+		//coloring line used for debug
 		line(color_dst, Point(lines[i][0], lines[i][1]),
 			Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
 		double mag = calculateMagnitude(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
 		int centreX = abs(lines[i][2] + lines[i][0]) / 2;
-		//if (!(angles[i] > -2) && !(angles[i] < -12) && mag > 100) //need to rework this
 		if (angles[i] < 0  && angles[i] > -30 && mag > 75 && centreX < 0.80*src.cols)
 		{
+			//coloring line used for debug
 			line(color_dst2, Point(lines[i][0], lines[i][1]),
 				Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
 			
@@ -53,30 +55,6 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 			angleSum += angles[i];
 			centrePoints[numNeckLines++] = Point(abs(lines[i][2]+lines[i][0])/2, 
 				abs(lines[i][3] + lines[i][1])/2);			
-			//circle(color_dst2, centrePoints[numNeckLines - 1], 5, Scalar(0, 255, 0));
-			//line with highest centre point and lowest centre point, after removing outliers
-			//rotate image based on avg angle, determine diff between y values?
-			//probs dont need max/min point then
-			if (lines[i][1] > maxY1) 
-			{
-				maxY1 = lines[i][1];
-				maxX1 = lines[i][0];
-			}
-			if (lines[i][1] < minY1)
-			{
-				minY1 = lines[i][1];
-				minX1 = lines[i][0];
-			}
-			if (lines[i][3] > maxY1)
-			{
-				maxY1 = lines[i][3];
-				maxX1 = lines[i][2];
-			}
-			if (lines[i][3] < minY1)
-			{
-				minY1 = lines[i][3];
-				minX1 = lines[i][2];
-			}
 			maxOrMinPoint(lines[i][0], lines[i][1], lines[i][2], lines[i][3], i);
 		}
 	}
@@ -89,13 +67,6 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 	imwrite("cd2.jpg", color_dst2);
 	double avgAngle = angleSum / numNeckLines;
 
-
-	double pxminAngle = calculateAngle(lines[pxmin_line][0], lines[pxmin_line][1], lines[pxmin_line][2], lines[pxmin_line][3]);
-	double pxmaxAngle = calculateAngle(lines[pxmax_line][0], lines[pxmax_line][1], lines[pxmax_line][2], lines[pxmax_line][3]);
-	double pyminAngle = calculateAngle(lines[pymin_line][0], lines[pymin_line][1], lines[pymin_line][2], lines[pymin_line][3]);
-	double pymaxAngle = calculateAngle(lines[pymax_line][0], lines[pymax_line][1], lines[pymax_line][2], lines[pymax_line][3]);
-
-	//double avgAngle = (pxminAngle + pxmaxAngle + pyminAngle + pymaxAngle) / 4;
 	Point center = Point(orig.cols / 2, orig.rows / 2);
 	Mat rot_mat(2, 3, CV_32FC1);
 	rot_mat = getRotationMatrix2D(center, avgAngle, 1);
@@ -134,15 +105,6 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 	circle(rotatedImage, px1, 2, Scalar(0, 255, 255));
 	circle(rotatedImage, py1, 2, Scalar(0, 255, 255));
 
-
-	/*Point px1 = Point(maxX1, maxY1);
-	Point py1 = Point(minX1, minY1);
-	circle(src, px, 2, Scalar(255, 0, 0));
-	circle(src, py, 2, Scalar(255, 0, 0));
-	rotatePoints(rot_mat, px1, py1);
-	circle(rotatedImage, px1, 2, Scalar(255, 0, 0));
-	circle(rotatedImage, py1, 2, Scalar(255, 0, 0));*/
-
 	namedWindow("rot", 1);
 	imshow("rot", rotatedImage);
 	namedWindow("src", 1);
@@ -172,16 +134,6 @@ double calculateMagnitude(int px1, int py1, int px2, int py2)
 	double deltaX = px2 - px1;
 	double mag = sqrt(deltaY*deltaY + deltaX*deltaX);
 	return mag;
-}
-
-void canny(Mat src, Mat &dst, Mat &color_dst, Mat &color_dst2)
-{
-	Mat src_gray;
-	blur(src, src_gray, Size(4, 4));
-	Canny(src_gray, dst, 100, 150, 3);
-	imwrite("Canny.jpg", dst);
-	cvtColor(dst, color_dst, CV_GRAY2BGR);
-	cvtColor(dst, color_dst2, CV_GRAY2BGR);
 }
 
 void maxOrMinPoint(int px1, int py1, int px2, int py2, int lineNum)

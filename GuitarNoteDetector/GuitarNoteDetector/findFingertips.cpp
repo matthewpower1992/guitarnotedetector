@@ -7,14 +7,13 @@ int thresh = 210;
 int max_thresh = 255;
 RNG rng(12345);
 
-Mat findFingertips(Mat src)
+vector<Point> findFingertips(Mat src)
 {
 	cvtColor(src, segmented_image, CV_BGR2GRAY);
 	blur(segmented_image, segmented_image, Size(3, 3));
-	//BGR
-	//cv::inRange(src, cv::Scalar(80, 40, 20), cv::Scalar(255, 255, 255), segmented_image);
 	cv::inRange(src, cv::Scalar(30, 60, 130), cv::Scalar(75, 100, 255), segmented_image);
 
+	//used for debug
 	char* source_window = "Source";
 	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
 	imshow(source_window, src);
@@ -34,14 +33,8 @@ Mat findFingertips(Mat src)
 	imshow("Neck", src);
 	imwrite("circ.png", src);
 
-	return segmented_image;
+	return fingertips;
 }
-
-
-
-
-
-
 
 void thresh_callback(int, void*)
 {

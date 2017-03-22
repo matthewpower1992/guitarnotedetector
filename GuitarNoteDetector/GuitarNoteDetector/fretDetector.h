@@ -5,4 +5,4 @@
 
 using namespace cv;
 
-Mat fretDetector(Mat src);
+vector<Point> fretDetector(Mat src);

@@ -21,10 +21,10 @@
     <ClCompile Include="detectguitarneck.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="background_sub.cpp">
+    <ClCompile Include="findFingertips.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="findFingertips.cpp">
+    <ClCompile Include="fretDetector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,10 +32,10 @@
     <ClInclude Include="detectguitarneck.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="background_sub.h">
+    <ClInclude Include="findFingertips.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="findFingertips.h">
+    <ClInclude Include="fretDetector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
