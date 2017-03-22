@@ -14,49 +14,36 @@ using namespace cv;
 
 bool record();
 void backsub();
+bool capture();
 
 int main(int argc, char** argv)
 {
-	//PlaySound(TEXT("hello.wav"),NULL, SND_FILENAME);
-	
-	backsub();
+	capture();
 	waitKey(0);
-	Mat background, src, bgs, neck, fingerTips, frets,img;
-	src = imread("2_w.png");
-	background = imread("2_3.png");
-	background.copyTo(img, src);
-	namedWindow("img", 1);
-	imshow("img", img);
-	neck = detectGuitarNeck(img);
-	waitKey(0);
-	/*int dilation_elem = 1;
-	int dilation_size = 5;
-	int dilation_type = MORPH_ELLIPSE;
-
-	Mat element = getStructuringElement(dilation_type,
-		Size(2 * dilation_size + 1, 2 * dilation_size + 1),
-		Point(dilation_size, dilation_size));
-	bgs = dilation(src);
-	erode(bgs, neck, element);*/
-	
-	/*Mat dest;
-	background.copyTo(dest);
-	for (int i = 0; i < src.rows; i++)
-	{
-		for (int j = 0; j < src.cols; j++)
-		{
-			int color = (int)bgs.at<uchar>(Point(j, i));
-			if (color <= 127)
-			{
-				dest.at<uchar>(Point(j * 3, i)) = 127;
-				dest.at<uchar>(Point((j * 3) + 1, i)) = 127;
-				dest.at<uchar>(Point((j * 3) + 2, i)) = 127;
-			}
-		}
-	}*/
-
-	
 	//backsub();
+	//waitKey(0);
+	//DONT DILATE IN VIDEO...TEST HOUGH WITH BACKGROUND?
+	Mat mask, guitarist, maskedImage, guitarNeck, fingerTips, frets;
+	mask = imread("2_mask.png");
+	guitarist = imread("2_35.png");
+	guitarist.copyTo(maskedImage, mask);
+	guitarNeck = detectGuitarNeck(maskedImage, guitarist);
+	frets = fretDetector(guitarNeck);
+	fingerTips = findFingertips(guitarNeck);
+	namedWindow("Mask", 1);
+	moveWindow("Mask", 0, 0);
+	imshow("Mask", mask);
+	namedWindow("Guitarist", 1);
+	moveWindow("Guitarist", 500, 0);
+	imshow("Guitarist", guitarist);
+	namedWindow("Masked Image", 1);
+	moveWindow("Masked Image", 500, 500);
+	imshow("Masked Image", maskedImage);
+	namedWindow("Guitar Neck", 1);
+	moveWindow("Guitar Neck", 700, 500);
+	imshow("Guitar Neck", guitarNeck);
+	waitKey(0);
+		//backsub();
 	//background = imread("1_w.png");
 	//src = imread("2_w.png");
 	//absdiff(background, src, bgs);
@@ -73,14 +60,14 @@ int main(int argc, char** argv)
 	//neck = detectGuitarNeck(bgs);
 	//fingerTips = findFingertips(neck);
 
-	namedWindow("Source", 1);
-	imshow("Source", src);
+	//namedWindow("Source", 1);
+	//imshow("Source", src);
 
-	namedWindow("Back", 1);
-	imshow("Back", bgs);
+	//namedWindow("Back", 1);
+	//imshow("Back", bgs);
 
-	namedWindow("Neck", 1);
-	imshow("Neck", neck);
+	//namedWindow("Neck", 1);
+	//imshow("Neck", neck);
 
 	//namedWindow("Fingertips", 1);
 	//imshow("Fingertips", dest);
@@ -94,6 +81,89 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+bool capture()
+{
+	Mat img, mask, maskedImg;
+	Ptr<BackgroundSubtractor> subtractor = new BackgroundSubtractorMOG2();
+	VideoCapture capture(0);
+	if (!capture.isOpened())  
+		return false;
+	namedWindow("Guitar Note Detector", 1);
+	moveWindow("Guitar Note Detector", 0, 0);
+	time_t start = time(0);
+	int duration = 40;
+	int maskCap = 20;
+	for (int i = start; difftime(time(0), i) < duration;)
+	{
+		if (!capture.grab())
+		{
+			std::cout << "Video failed to capture" << std::endl;
+		}
+		capture.retrieve(img, CV_CAP_OPENNI_BGR_IMAGE);
+		if (difftime(time(0), start) < maskCap)
+		{
+			if (mask.empty()) {
+				mask.create(img.size(), img.type());
+			}
+			subtractor->operator()(img, mask, -1);
+			GaussianBlur(mask, mask, Size(11, 11), 3.5, 3.5);
+			threshold(mask, mask, 10, 255, THRESH_BINARY);
+		}
+		//only need these for debug video
+		maskedImg = Scalar::all(0);
+		img.copyTo(maskedImg, mask);
+		//need to delay
+		waitKey(40);
+
+		string text1 = "Please step out of frame";
+		string text2 = "Calibrating";
+		string text3 = "Step back into frame with guitar";
+		string text4 = "Begin";
+		int fontFace = FONT_HERSHEY_PLAIN;
+		double fontScale = 2;
+		int thickness = 3;
+		cv::Point textOrg(100, 130);
+		int backgroundCalib = 5;
+		int backgroundCap = 10;
+		int maskCap = 20;
+		int noteRate = 3;
+		int seconds = difftime(time(0), start);
+
+		if (seconds < backgroundCalib)
+		{
+			cv::putText(img, text1, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+		}
+		else if (seconds >= backgroundCalib && seconds <= backgroundCap)
+		{
+			cv::putText(img, text2, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+		}
+		else if (seconds > backgroundCap && seconds < maskCap)
+		{
+			cv::putText(img, text3, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+		}
+		else if (seconds == maskCap)
+		{			
+			string filename = "2_";
+			filename += std::to_string(seconds);
+			string maskname = "2_mask.png";
+			filename += ".png";
+			imwrite(filename, img);
+			imwrite(maskname, mask);
+			cv::putText(img, text4, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
+
+		}
+		else if (seconds % noteRate == (noteRate - 1))
+		{
+			string filename = "2_";
+			filename += std::to_string(seconds);
+			filename += ".png";
+			imwrite(filename, img);
+		}
+		imshow("Guitar Note Detector", img);
+	}
+
+}
+
 void backsub()
 {
 	// Init background substractor
@@ -105,10 +175,15 @@ void backsub()
 	// capture video from source 0, which is web camera, If you want capture video from file just replace //by  VideoCapture cap("videoFile.mov")
 	VideoCapture cap(0);
 	namedWindow("Guitar Note Detector", 1);
+	moveWindow("Guitar Note Detector", 0, 0);
+	namedWindow("foreground mask", 1);
+	moveWindow("foreground mask", 700, 0);
+	namedWindow("foreground image", 1);
+	moveWindow("foreground image", 700, 500);
 	time_t start = time(0);
 	int secs;
 	// main loop to grab sequence of input files
-	for (int i = start; difftime(time(0), i) < 36 ;) {
+	for (int i = start; difftime(time(0), i) < 40 ;) {
 
 		bool ok = cap.grab();
 
@@ -134,44 +209,52 @@ void backsub()
 			int thickness = 3;
 			cv::Point textOrg(100, 130);
 			
+			if (difftime(time(0), start) < 20)
+			{
+				// create foreground mask of proper size
+				if (foregroundMask.empty()) {
+					foregroundMask.create(img.size(), img.type());
+				}
 
-			// create foreground mask of proper size
-			if (foregroundMask.empty()) {
-				foregroundMask.create(img.size(), img.type());
-			}
+				// compute foreground mask 8 bit image
+				// -1 is parameter that chose automatically your learning rate
 
-			// compute foreground mask 8 bit image
-			// -1 is parameter that chose automatically your learning rate
+				bg_model->operator()(img, foregroundMask, true ? -1 : 0);
 
-			bg_model->operator()(img, foregroundMask, true ? -1 : 0);
+				// smooth the mask to reduce noise in image
+				GaussianBlur(foregroundMask, foregroundMask, Size(11, 11), 3.5, 3.5);
 
-			// smooth the mask to reduce noise in image
-			GaussianBlur(foregroundMask, foregroundMask, Size(11, 11), 3.5, 3.5);
+				// threshold mask to saturate at black and white values
+				threshold(foregroundMask, foregroundMask, 10, 255, THRESH_BINARY);
 
-			// threshold mask to saturate at black and white values
-			threshold(foregroundMask, foregroundMask, 10, 255, THRESH_BINARY);
-
-
-			// create black foreground image
+				// create black foreground image
 				foregroundImg = Scalar::all(0);
+				// Copy source image to foreground image only in area with white mask
+				img.copyTo(foregroundImg, foregroundMask);
+
+				//Get background image
+				bg_model->getBackgroundImage(backgroundImage);
+
+				// Show the results
+				//imshow("foreground mask", foregroundMask);
+				//imshow("foreground image", foregroundImg);
+
+				int key6 = waitKey(40);
+
+				if (!backgroundImage.empty()) {
+
+					//imshow("mean background image", backgroundImage);
+					//int key5 = waitKey(40);
+
+				}
+			}
+			foregroundImg = Scalar::all(0);
 			// Copy source image to foreground image only in area with white mask
 			img.copyTo(foregroundImg, foregroundMask);
-
-			//Get background image
-			bg_model->getBackgroundImage(backgroundImage);
-
-			// Show the results
 			imshow("foreground mask", foregroundMask);
 			imshow("foreground image", foregroundImg);
 
 			int key6 = waitKey(40);
-
-			if (!backgroundImage.empty()) {
-
-				//imshow("mean background image", backgroundImage);
-				//int key5 = waitKey(40);
-
-			}
 			secs = difftime(time(0), start);
 			if (secs < 5)
 			{
@@ -183,22 +266,23 @@ void backsub()
 			}
 			else if (secs == 10)
 			{
-				imwrite("1_w.png", img);
 				PlaySound(TEXT("hello.wav"), NULL, SND_FILENAME | SND_ASYNC);
 			}
-			else if (secs > 10 && secs < 17)
+			else if (secs > 10 && secs < 20)
 			{
 				cv::putText(img, text3, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
 			}
-			else if (secs == 17)
+			else if (secs == 20)
 			{
 				PlaySound(TEXT("pop.wav"), NULL, SND_FILENAME);
 				cv::putText(img, text4, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
 				string filename = "2_";
-				filename += std::to_string(secs/15);
+				filename += std::to_string(secs);
+				string maskname = "2_mask.png";
 				filename += ".png";
-				imwrite("2_w.png", foregroundMask);
-				imwrite(filename, foregroundImg);
+				imwrite(filename, img);
+				imwrite(maskname, foregroundMask);
+
 			}
 			else if (secs % 3 == 2)
 			{
@@ -206,10 +290,12 @@ void backsub()
 				cv::putText(img, text4, textOrg, fontFace, fontScale, Scalar::all(255), thickness, 8);
 				string filename = "2_";
 				filename += std::to_string(secs);
+				//string maskname = filename + "mask.png";
 				filename += ".png";
 				imwrite(filename, img);
+				//imwrite(maskname, foregroundMask);
 			}
-			imshow("Guitar Note Detector", foregroundImg);
+			imshow("Guitar Note Detector", img);
 
 		}
 

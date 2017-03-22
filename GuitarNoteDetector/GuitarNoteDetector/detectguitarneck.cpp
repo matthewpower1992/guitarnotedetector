@@ -3,7 +3,8 @@
 int pxmin_line, pxmax_line, pymin_line, pymax_line;
 Point p_max, p_min;
 
-Mat detectGuitarNeck(Mat src)
+//return ROI instead and apply to original image instead of masked
+Mat detectGuitarNeck(Mat src, Mat orig)
 {
 	Mat dst, color_dst, color_dst2;
 	canny(src, dst, color_dst, color_dst2);
@@ -95,16 +96,16 @@ Mat detectGuitarNeck(Mat src)
 	double pymaxAngle = calculateAngle(lines[pymax_line][0], lines[pymax_line][1], lines[pymax_line][2], lines[pymax_line][3]);
 
 	//double avgAngle = (pxminAngle + pxmaxAngle + pyminAngle + pymaxAngle) / 4;
-	Point center = Point(src.cols / 2, src.rows / 2);
+	Point center = Point(orig.cols / 2, orig.rows / 2);
 	Mat rot_mat(2, 3, CV_32FC1);
 	rot_mat = getRotationMatrix2D(center, avgAngle, 1);
 
 	Mat rotatedImage;
-	warpAffine(src, rotatedImage, rot_mat, src.size());
+	warpAffine(orig, rotatedImage, rot_mat, orig.size());
 
 	transform(centrePoints, rotatedCentrePoints, rot_mat);
 	int maxY = 0;
-	int minY = src.rows;
+	int minY = orig.rows;
 	for (int i = 0; i < numNeckLines; i++)
 	{
 		int y = rotatedCentrePoints[i].y;
@@ -153,7 +154,7 @@ Mat detectGuitarNeck(Mat src)
 	rotatedImage(neckROI).copyTo(cropped);
 
 	imwrite("neckk.jpg", cropped);
-	waitKey(0);
+	//waitKey(0);
 	return cropped;
 }
 

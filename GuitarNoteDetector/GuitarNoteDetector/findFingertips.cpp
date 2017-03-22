@@ -11,12 +11,13 @@ Mat findFingertips(Mat src)
 {
 	cvtColor(src, segmented_image, CV_BGR2GRAY);
 	blur(segmented_image, segmented_image, Size(3, 3));
+	//BGR
 	//cv::inRange(src, cv::Scalar(80, 40, 20), cv::Scalar(255, 255, 255), segmented_image);
-	cv::inRange(src, cv::Scalar(80, 40, 20), cv::Scalar(255, 255, 255), segmented_image);
+	cv::inRange(src, cv::Scalar(30, 60, 130), cv::Scalar(75, 100, 255), segmented_image);
 
-	/*char* source_window = "Source";
+	char* source_window = "Source";
 	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
-	imshow(source_window, src);*/
+	imshow(source_window, src);
 
 	thresh_callback(0, 0);
 
@@ -26,12 +27,12 @@ Mat findFingertips(Mat src)
 	}
 
 	namedWindow("Segmented", 1);
-	/*imwrite("seg.png", segmented_image);
+	imwrite("seg.png", segmented_image);
 	imshow("Segmented", segmented_image);
 
 	namedWindow("Neck", 1);
 	imshow("Neck", src);
-	imwrite("circ.png", src);*/
+	imwrite("circ.png", src);
 
 	return segmented_image;
 }
@@ -51,7 +52,7 @@ void thresh_callback(int, void*)
 	/// Detect edges using canny
 	Canny(segmented_image, canny_output, thresh, thresh * 2, 3);
 	/// Find contours
-	findContours(canny_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	findContours(segmented_image, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	fingertips.resize(contours.size());
 
 	/// Draw contours
@@ -63,7 +64,7 @@ void thresh_callback(int, void*)
 	{
 		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
 		drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
-		if (contours[i].capacity() > 20 && contours[i].capacity() < 30) //if contour within right side of image? 
+		if (contours[i].capacity() > 40 && contours[i].capacity() < 60) //if contour within right side of image? 
 		{
 			int finX = segmented_image.cols;
 			int finY = segmented_image.rows;
@@ -90,10 +91,10 @@ void thresh_callback(int, void*)
 	}
 
 	/// Show in a window
-	/*namedWindow("Drawing", CV_WINDOW_AUTOSIZE);
+	namedWindow("Drawing", CV_WINDOW_AUTOSIZE);
 	imshow("Drawing", drawing);
 	imwrite("contours.png", drawing);
 	namedWindow("Drawing2", CV_WINDOW_AUTOSIZE);
 	imshow("Drawing2", drawing2);
-	imwrite("con2.png", drawing2);*/
+	imwrite("con2.png", drawing2);
 }

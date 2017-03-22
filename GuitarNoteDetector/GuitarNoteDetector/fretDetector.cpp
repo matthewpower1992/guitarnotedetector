@@ -49,38 +49,51 @@ Mat fretDetector(Mat src)
 	Mat neckbw;
 	threshold(abs_grad_x, neckbw, 75, 255, THRESH_BINARY);
 	int yval = abs_grad_x.rows;
-	yval = yval / 8;
-	yval = yval * 3;
+	yval = yval / 16;
+	yval = yval * 5;
 	imwrite("gard_neck.png", neckbw);
 	centrePoints.resize(abs_grad_x.cols);
 	int numPoints = 0;
 	//line(neckbw, Point(0, yval),
 	//	Point(abs_grad_x.cols, yval), Scalar(0, 0, 255), 3, 8);
 	bool fretStarted = false;
-	int colorprev = 0;
-	for (int i = 0; i < abs_grad_x.cols; i++)
+	int prevColor = 255;
+	int fretWidth = 0;
+	int fretStart = 0;
+	int fretEnd = 0;
+	for (int i = abs_grad_x.cols - 1; i >= 0; i--)
 	{
 		int color = (int)neckbw.at<uchar>(Point(i, yval));
-		if (color == 255)
+		if (color == 255) //if pixel is white
 		{
-			if (fretStarted == false)
+			if (prevColor == 0)
 			{
-				fretStarted = true;
-				centrePoints[numPoints++] = Point(i, yval);
+				if (fretWidth > 10)
+				{
+					fretEnd = i;
+					centrePoints[numPoints++] = Point(fretEnd, yval);
+				}
+				fretWidth = 0;
 			}
+			//if (fretStarted == false)
+			//{
+			//	fretStarted = true;
+			//	centrePoints[numPoints++] = Point(i, yval);
+			//}
 		}
 		else
 		{
-			if (colorprev == 0)
-			{
-				fretStarted = false;
-			}
+			//if (prevColor == 255)
+			//{
+			//	fretStart = i;
+			//}
+			fretWidth++;			
 		}
-		colorprev = color;
+		prevColor = color;
 	}
 	for (int i = 0; i < numPoints; i++)
 	{
-		circle(neckbw, centrePoints[i], 3, Scalar(0, 255, 0));
+		circle(src, centrePoints[i], 3, Scalar(0, 255, 0));
 	}
 
 
@@ -88,35 +101,11 @@ Mat fretDetector(Mat src)
 	imshow("grad", abs_grad_x);
 	namedWindow("nbw", 1);
 	imshow("nbw", neckbw);
+	namedWindow("src11", 1);
+	imshow("src11", src);
 
-	waitKey(0);
 
-	/*HoughLinesP(abs_grad_x, lines, 1, CV_PI, 55, 55, 1);
-
-	neckLines.resize(lines.size());
-	centrePoints.resize(lines.size());
-	angles.resize(lines.size());
-
-	double angleSum = 0;
-	for (size_t i = 0; i < lines.size(); i++)
-	{
-	angles[i] = calculateAngle(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
-	angleSum += angles[i];
-	}
-
-	int numNeckLines = 0;
-
-	for (int i = 0; i < lines.size(); i=i+5)
-	{
-	line(color_dst, Point(lines[i][0], lines[i][1]),
-	Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
-	double mag = calculateMagnitude(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
-	}
-
-	namedWindow("cd", 1);
-	imshow("cd", color_dst);
-
-	waitKey(0);*/
+	//waitKey(0);
 
 	return grad;
 }

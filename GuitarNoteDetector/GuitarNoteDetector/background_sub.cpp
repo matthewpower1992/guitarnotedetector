@@ -59,8 +59,8 @@ Mat dilation(Mat src)
 	//cvMoveWindow("Dilation Demo", src.cols, 0);
 
 	int dilation_elem = 1;
-	int dilation_size = 3;
-	int dilation_type = MORPH_RECT;
+	int dilation_size = 2;
+	int dilation_type = MORPH_ELLIPSE;
 
 	Mat element = getStructuringElement(dilation_type,
 		Size(2 * dilation_size + 1, 2 * dilation_size + 1),
