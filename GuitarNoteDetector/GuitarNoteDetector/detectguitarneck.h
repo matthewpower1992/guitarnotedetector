@@ -5,7 +5,7 @@
 
 using namespace cv;
 
-Mat detectGuitarNeck(Mat src, Mat orig);
+Mat detectGuitarNeck(Mat src, Mat orig, int &neckWidth, Mat &rot_mat, Rect &neckROI);
 
 double calculateAngle(int px1, int py1, int px2, int py2);
 

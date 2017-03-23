@@ -3,7 +3,7 @@
 int pxmin_line, pxmax_line, pymin_line, pymax_line;
 Point p_max, p_min;
 
-Mat detectGuitarNeck(Mat src, Mat orig)
+Mat detectGuitarNeck(Mat src, Mat orig, int &neckWidth, Mat &rot_mat, Rect &neckROI)
 {
 	//color dst used for debug
 	Mat dst, color_dst, color_dst2;
@@ -24,12 +24,14 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 	p_min.y = src.rows;
 	p_max.y = 0;
 
+	//Detect lines in image
 	HoughLinesP(dst, lines, 1, CV_PI / 180, 50, 75, 10);
 
 	neckLines.resize(lines.size());
 	centrePoints.resize(lines.size());
 	angles.resize(lines.size());
 
+	//Get angle of all lines
 	double angleSum = 0;
 	for (size_t i = 0; i < lines.size(); i++)
 	{
@@ -45,7 +47,9 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 			Point(lines[i][2], lines[i][3]), Scalar(0, 0, 255), 3, 8);
 		double mag = calculateMagnitude(lines[i][0], lines[i][1], lines[i][2], lines[i][3]);
 		int centreX = abs(lines[i][2] + lines[i][0]) / 2;
-		if (angles[i] < 0  && angles[i] > -30 && mag > 75 && centreX < 0.80*src.cols)
+
+		//If angle between -10 and -30 degrees, magnitude greater than 75 and centre of line on right side of image
+		if (angles[i] < -10  && angles[i] > -30 && mag > 75 && centreX < 0.80*src.cols)
 		{
 			//coloring line used for debug
 			line(color_dst2, Point(lines[i][0], lines[i][1]),
@@ -59,20 +63,18 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 		}
 	}
 
-	//namedWindow("cd", 1);
-	//imshow("cd", color_dst);
-	imwrite("cd.jpg", color_dst);
-	//namedWindow("cd2", 1);
-	//imshow("cd2", color_dst2);
-	imwrite("cd2.jpg", color_dst2);
-	double avgAngle = angleSum / numNeckLines;
+	//Calculate average angle
+	double avgAngle;
+	avgAngle = angleSum / numNeckLines;
 
 	Point center = Point(orig.cols / 2, orig.rows / 2);
-	Mat rot_mat(2, 3, CV_32FC1);
+	rot_mat = Mat(2, 3, CV_32FC1);
 	rot_mat = getRotationMatrix2D(center, avgAngle, 1);
 
 	Mat rotatedImage;
 	warpAffine(orig, rotatedImage, rot_mat, orig.size());
+
+	//Rotate image based on average angle of guitar lines
 
 	transform(centrePoints, rotatedCentrePoints, rot_mat);
 	int maxY = 0;
@@ -92,7 +94,7 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 		//circle(rotatedImage, rotatedCentrePoints[i], 10, Scalar(255, 255, 0));
 		
 	}
-	int neckWidth = maxY - minY;
+	neckWidth = maxY - minY;
 	Point px = Point(p_min.x, p_max.y);
 	Point py = Point(p_max.x, p_min.y);
 	rotatePoints(rot_mat, px, py);
@@ -105,13 +107,7 @@ Mat detectGuitarNeck(Mat src, Mat orig)
 	circle(rotatedImage, px1, 2, Scalar(0, 255, 255));
 	circle(rotatedImage, py1, 2, Scalar(0, 255, 255));
 
-	namedWindow("rot", 1);
-	imshow("rot", rotatedImage);
-	namedWindow("src", 1);
-	imshow("src", src);
-	//waitKey(0);
-	
-	Rect neckROI(px1.x, py1.y, py1.x-px1.x, px1.y-py1.y); //getting neg values 
+	neckROI = Rect(px1.x, py1.y, py1.x - px1.x, px1.y - py1.y); 
 	Mat cropped;
 	rotatedImage(neckROI).copyTo(cropped);
 

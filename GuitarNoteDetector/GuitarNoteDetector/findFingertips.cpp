@@ -7,87 +7,62 @@ int thresh = 210;
 int max_thresh = 255;
 RNG rng(12345);
 
-vector<Point> findFingertips(Mat src)
+vector<Point> findFingertips(Mat src, int &num)
 {
+	//Get pixels within skin colour range
 	cvtColor(src, segmented_image, CV_BGR2GRAY);
 	blur(segmented_image, segmented_image, Size(3, 3));
-	cv::inRange(src, cv::Scalar(30, 60, 130), cv::Scalar(75, 100, 255), segmented_image);
+	cv::inRange(src, cv::Scalar(30, 60, 130), cv::Scalar(180, 180, 255), segmented_image);
 
-	//used for debug
-	char* source_window = "Source";
-	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
-	imshow(source_window, src);
+	//Detect contours in image
+	contourDetection();
 
-	thresh_callback(0, 0);
-
-	for (int i = 0; i < numFingertips; i++)
-	{
-		circle(src, fingertips[i], 5, Scalar(0, 255, 0));
-	}
-
-	namedWindow("Segmented", 1);
-	imwrite("seg.png", segmented_image);
-	imshow("Segmented", segmented_image);
-
-	namedWindow("Neck", 1);
-	imshow("Neck", src);
-	imwrite("circ.png", src);
-
+	//Return fingertip locations and number detected in this iteration
+	num = numFingertips;
 	return fingertips;
 }
 
-void thresh_callback(int, void*)
+void contourDetection()
 {
 	Mat canny_output;
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 
-	/// Detect edges using canny
+	//Perform canny edge detection
 	Canny(segmented_image, canny_output, thresh, thresh * 2, 3);
-	/// Find contours
+
+	//Find contours in image
 	findContours(segmented_image, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	fingertips.resize(contours.size());
 
-	/// Draw contours
-	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
-	Mat drawing2 = Mat::zeros(canny_output.size(), CV_8UC3);
 	int maxY = segmented_image.rows;
 	bool drawn = false;
+
+	//If contour is between 10 and 60 pixels and within the right half of the image, likely a fingertip
 	for (int i = 0; i< contours.size(); i++, drawn = false)
 	{
-		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-		drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
-		if (contours[i].capacity() > 40 && contours[i].capacity() < 60) //if contour within right side of image? 
+		if (contours[i].capacity() > 10 && contours[i].capacity() < 60 
+			&& contours[i][0].x > 0.60*segmented_image.cols && contours[i][0].x < 0.95*segmented_image.cols) 
 		{
 			int finX = segmented_image.cols;
 			int finY = segmented_image.rows;
 			for (int j = 0; drawn == false && j < contours[i].capacity(); j++)
 			{
-				if (contours[i][j].x < finX && contours[i][j].y < finY) //find leftmost pixel (change to upper left)
+				if (contours[i][j].x < finX && contours[i][j].y < finY) //find leftmost pixel as fingertip maxima
 				{
 					finX = contours[i][j].x;
 					finY = contours[i][j].y;
 				}
 				if (contours[i][j].y > maxY - 5)
 				{
-					drawContours(drawing2, contours, i, color, 2, 8, hierarchy, 0, Point());
 					drawn = true;
 				}
 			}
 			if (drawn)
 			{
 				Point fingertipCentre = Point(finX, finY);
-				//circle(drawing2, fingertipCentre, 5, Scalar(0, 255, 0));
 				fingertips[numFingertips++] = fingertipCentre;
 			}
 		}
 	}
-
-	/// Show in a window
-	namedWindow("Drawing", CV_WINDOW_AUTOSIZE);
-	imshow("Drawing", drawing);
-	imwrite("contours.png", drawing);
-	namedWindow("Drawing2", CV_WINDOW_AUTOSIZE);
-	imshow("Drawing2", drawing2);
-	imwrite("con2.png", drawing2);
 }
